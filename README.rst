@@ -10,9 +10,9 @@ files in a given directory.
 
 Installation
 -------------
-```
-pip install nlatest-files
-```
+.. code-block:: 
+
+    pip install nlatest-files
 
 Usage
 ------
