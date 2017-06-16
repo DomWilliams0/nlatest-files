@@ -102,6 +102,12 @@ def handler_update_symlinks(conf):
 
 
 def parse_args():
+    def positive_int(val):
+        i = int(val)
+        if i <= 0:
+            raise configargparse.ArgumentTypeError("Positive integer expected")
+        return i
+
     default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
     # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
     default_n = 1
@@ -111,15 +117,13 @@ def parse_args():
     p = configargparse.ArgParser(default_config_files=[default_conf])
     # TODO add examples in epilog using RawDescriptionHelpFormatter
 
-    # TODO n must be positive!
-
     p.add("-c", "--config", is_config_file=True, metavar="FILE",
           help="config file location, defaults to %s" % default_conf)  # TODO dont expand default
     p.add("--save", action="store_true",
           help="if specified, saves the current configuration to the config file")
     p.add("-d", "--dir", required=True, metavar="DIR",
           help="the screenshot directory")
-    p.add("-n", "--count", type=int, default=default_n, metavar="COUNT",
+    p.add("-n", "--count", type=positive_int, default=default_n, metavar="COUNT",
           help="the latest n screenshots to list, defaults to %d" % default_n)
 
     p.add("-u", "--update-symlinks", action="store_true", dest="update-symlinks",
