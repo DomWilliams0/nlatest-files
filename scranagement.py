@@ -91,6 +91,9 @@ def handler_save_config(conf):
 
 
 def update_symlinks(sym_dir, format, screenshot_dir, n):
+    if n != 1 and not "{n}" in conf.symlink_format:
+        raise ConfigurationError("Missing {n} in symlink format")
+
     files = get_n_latest(screenshot_dir, n)
 
     # TODO special format for the first
@@ -111,7 +114,6 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
 
 
 def handler_update_symlinks(conf):
-    # TODO format string must have {n}
     update_symlinks(conf.symlink_dir, conf.symlink_format,
                     conf.dir, conf.count)
 
@@ -164,7 +166,7 @@ EXAMPLES
     p.add("-s", "--symlink-dir", metavar="DIR", dest="symlink-dir",
           help="the directory to create symlinks in, defaults to the screenshot directory")
     p.add("-f", "--symlink-format", default=default_format, metavar="FORMAT", dest="symlink-format",
-          help="the format string for symlinks, where {n} is the order index, defaults to '%s'" % default_format)
+          help="the format string for symlinks, where {n} is the order index, defaults to '%s'. {n} must be included, unless n = 1" % default_format)
     p.add("-q", "--quiet", action="store_true",
           help="if specified, no status messages will be printed to stderr")
 
