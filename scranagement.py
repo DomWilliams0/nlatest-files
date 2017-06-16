@@ -10,6 +10,19 @@ import configargparse
 import configparser
 
 
+class Screrror(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class ScreenshotDirError(Screrror):
+    pass
+
+
+class ConfigurationError(Screrror):
+    pass
+
+
 class Action(Enum):
     SAVE_CONFIG = 0
     SYMLINKS = 1
@@ -33,25 +46,25 @@ def debug(msg):
 
 
 def get_n_latest(directory, n):
-    # TODO check for missing directory
+    if not os.path.exists(directory):
+        raise ScreenshotDirError("Screenshot directory not found")
+    if not os.path.isdir(directory):
+        raise ScreenshotDirError("Screenshot directory is not a directory")
+
     files = [os.path.abspath(f) for f in glob.glob(
         "%s/*" % directory) if os.path.isfile(f)]
+
+    if len(files) == 0:
+        raise ScreenshotDirError("No screenshots found")
+
     files.sort(key=os.path.getmtime, reverse=True)
     return files[:n]
 
 
 def handler_get_n_latest(conf):
     files = get_n_latest(conf.dir, conf.count)
-
-    # none found
-    if not files:
-        return False
-
     for f in files:
         print(f)
-
-    # TODO err codes
-    return True
 
 
 def handler_save_config(conf):
@@ -75,11 +88,10 @@ def handler_save_config(conf):
         cp.write(f)
 
     debug("Wrote config to %s" % conf.config)
-    return True
 
 
 def update_symlinks(sym_dir, format, screenshot_dir, n):
-    files = get_n_latest(screenshot_dir, n)  # TODO check if empty
+    files = get_n_latest(screenshot_dir, n)
 
     # TODO special format for the first
 
@@ -97,11 +109,9 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
         debug("Creating symlink %s -> %s" % (os.path.basename(scr), sym))
         os.symlink(scr, sym)
 
-    return True
-
 
 def handler_update_symlinks(conf):
-    return update_symlinks(conf.symlink_dir, conf.symlink_format, conf.dir, conf.count)
+    update_symlinks(conf.symlink_dir, conf.symlink_format, conf.dir, conf.count)
 
 
 def parse_args():
@@ -111,7 +121,7 @@ def parse_args():
             raise configargparse.ArgumentTypeError("Positive integer expected")
         return i
 
-    default_conf_raw ="$XDG_CONFIG_HOME/scranagement.conf"
+    default_conf_raw = "$XDG_CONFIG_HOME/scranagement.conf"
     default_conf = _expand_path(default_conf_raw)
     default_n = 1
     default_format = "latest-screenshot-{n}"
@@ -159,9 +169,8 @@ def parse_args():
         # one was chosen
         action = Action(actions.index(True))
     else:
-        # uh oh
-        debug("Error: only one of --update-symlinks and --save can be specified")
-        sys.exit(1)  # TODO return error code instead of exit
+        raise ConfigurationError(
+            "Only one of --update-symlinks and --save can be specified")
 
     return Config(
         config=opts["config"],
@@ -180,8 +189,12 @@ ACTION_HANDLERS = [
 ]
 
 if __name__ == "__main__":
-    conf = parse_args()
-    res = ACTION_HANDLERS[conf.action.value](conf)
+    try:
+        conf = parse_args()
+        ACTION_HANDLERS[conf.action.value](conf)
+        exit = 0
+    except Screrror as e:
+        debug("%s: %s" % (e.__class__.__name__, e.msg))
+        exit = 1
 
-    exit = 0 if res else 2
     sys.exit(exit)
