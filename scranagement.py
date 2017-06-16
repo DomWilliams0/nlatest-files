@@ -44,41 +44,59 @@ def parse_args():
     default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
     # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
     default_n = 1
-    default_format = "screenshot-latest-%(n)"
+    default_format = "screenshot-latest-%%(n)"
     # TODO accept date formatting too?
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
     # TODO add examples in epilog using RawDescriptionHelpFormatter
 
-    p.add("-c", is_config_file=True, metavar="file",
+    p.add("-c", "--config", is_config_file=True, metavar="FILE",
           help="config file location, defaults to %s" % default_conf)  # TODO dont expand default
     p.add("--save", action="store_true",
           help="if specified, saves the current configuration to the config file")
-    p.add("-d", required=True, metavar="dir", help="the screenshot directory")
-    p.add("-n", type=int, default=default_n, metavar="count",
+    p.add("-d", "--dir", required=True, metavar="DIR",
+          help="the screenshot directory")
+    p.add("-n", "--count", type=int, default=default_n, metavar="COUNT",
           help="the latest n screenshots to list, defaults to %d" % default_n)
 
-    p.add("symlinks", nargs="?", help="create symlinks to the latest n screenshots")
-    p.add("-s", metavar="dir", help="the directory to create symlinks in")
-    p.add("-f", default=default_format, metavar="format",
+    p.add("-u", "--update-symlinks", action="store_true",
+          help="create symlinks to the latest n screenshots")
+    p.add("-s", "--symlink-dir", metavar="DIR", dest="symlink-dir",
+          help="the directory to create symlinks in, defaults to the screenshot directory")
+    p.add("-f", "--symlink-format", default=default_format, metavar="FORMAT", dest="symlink-format",
           help="the format string for symlinks, where %%(n) is the order index")
 
     opts = vars(p.parse_args())
 
-    # remove unneeded option
-    opts.pop("conf", None)
+    # set default
+    if not opts["symlink-dir"]:
+        opts["symlink-dir"] = opts["dir"]
 
     # save to config file
-    if opts.pop("save"):
+    if opts["save"]:
         cp = configparser.ConfigParser()
-        # TODO split into general and symlink settings
-        cp.read_dict({"settings": opts})
+
+        # splt up settings
+        general_settings, symlink_settings = {}, {}
+        for (k, v) in opts.items():
+            if k.startswith("symlink-"):
+                section = symlink_settings
+            elif k in ["dir", "count"]:
+                section = general_settings
+            else:
+                continue
+
+            section[k] = v
+
+        cp.read_dict({"general": general_settings,
+                      "symlinks": symlink_settings})
         with open(default_conf, "w") as f:
             cp.write(f)
-        debug("Wrote config to %s" % default_conf)
-        sys.exit(0)  # TODO return success-and-dont-continue exit code
 
-    return Config(directory=_expand_path(opts["directory"]), latest_n=opts["latest"])
+        debug("Wrote config to %s" % default_conf)
+        sys.exit(0)  # TODO return action with what to do
+
+    return Config(directory=_expand_path(opts["dir"]), latest_n=opts["count"])
 
 
 if __name__ == "__main__":
