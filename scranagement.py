@@ -111,7 +111,9 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
 
 
 def handler_update_symlinks(conf):
-    update_symlinks(conf.symlink_dir, conf.symlink_format, conf.dir, conf.count)
+    # TODO format string must have {n}
+    update_symlinks(conf.symlink_dir, conf.symlink_format,
+                    conf.dir, conf.count)
 
 
 def parse_args():
@@ -125,9 +127,28 @@ def parse_args():
     default_conf = _expand_path(default_conf_raw)
     default_n = 1
     default_format = "latest-screenshot-{n}"
+    prog = "scrs"
 
-    p = configargparse.ArgParser(default_config_files=[default_conf])
-    # TODO add examples in epilog using RawDescriptionHelpFormatter
+    p = configargparse.ArgParser(default_config_files=[default_conf], prog=prog,
+                                 formatter_class=configargparse.RawDescriptionHelpFormatter,
+                                 epilog="""
+EXAMPLES
+{prog} -d ~/Pictures -n 5
+    Prints the latest 5 screenshots in ~/Pictures
+
+{prog} -d ~/Pictures -n 5 --save
+    Saves the given parameters to the default config file
+
+{prog} -d ~/Pictures -n 5 -c ~/dotfiles/myconfig.conf --save
+    Saves the given parameters to the specified config file
+
+{prog}
+    Prints the latest 5 again, using from the config file
+
+{prog} -u -s $HOME/screenshots -f "screeny-{{n}}" -n 3
+    Creates symlinks to the top 3 latest screenshots in ~/screenshots
+
+            """.format(prog=prog))
 
     p.add("-c", "--config", is_config_file=True, metavar="FILE",
           help="config file location, defaults to %s" % default_conf_raw)
