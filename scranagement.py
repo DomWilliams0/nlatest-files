@@ -5,7 +5,6 @@ import glob
 import sys
 from collections import namedtuple
 from enum import Enum
-import contextlib
 
 import configargparse
 import configparser
@@ -80,13 +79,19 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
     files = get_n_latest(screenshot_dir, n)  # TODO check if empty
 
     # TODO special format for the first
-    # TODO delete all matching glob
+
+    # delete all existing
+    delete_glob = format.format(n="*")
+    count = 0
+    for sym in glob.glob(os.path.join(sym_dir, delete_glob)):
+        if os.path.islink:
+            os.remove(sym)
+            count += 1
+    debug(conf, "Removed %d existing symlink(s)" % count)
 
     for (i, scr) in enumerate(files):
         sym = os.path.join(sym_dir, format.format(n=i + 1))
         debug(conf, "Creating symlink %s -> %s" % (os.path.basename(scr), sym))
-        with contextlib.suppress(FileNotFoundError):
-            os.remove(sym)
         os.symlink(scr, sym)
 
     return True
@@ -105,6 +110,8 @@ def parse_args():
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
     # TODO add examples in epilog using RawDescriptionHelpFormatter
+
+    # TODO n must be positive!
 
     p.add("-c", "--config", is_config_file=True, metavar="FILE",
           help="config file location, defaults to %s" % default_conf)  # TODO dont expand default
