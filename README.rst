@@ -75,6 +75,7 @@ Examples
 
 Future Plans
 -------------
+- [ ] preserve file extension
 - [ ] file extension specifier
 - [ ] multiple source directories
 - [ ] recursive search
