@@ -111,17 +111,16 @@ def parse_args():
             raise configargparse.ArgumentTypeError("Positive integer expected")
         return i
 
-    default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
-    # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
+    default_conf_raw ="$XDG_CONFIG_HOME/scranagement.conf"
+    default_conf = _expand_path(default_conf_raw)
     default_n = 1
     default_format = "latest-screenshot-{n}"
-    # TODO accept date formatting too?
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
     # TODO add examples in epilog using RawDescriptionHelpFormatter
 
     p.add("-c", "--config", is_config_file=True, metavar="FILE",
-          help="config file location, defaults to %s" % default_conf)  # TODO dont expand default
+          help="config file location, defaults to %s" % default_conf_raw)
     p.add("--save", action="store_true",
           help="if specified, saves the current configuration to the config file")
     p.add("-d", "--dir", required=True, metavar="DIR",
