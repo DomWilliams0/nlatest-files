@@ -43,13 +43,17 @@ def debug(msg):
 def parse_args():
     default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
     # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
+    default_n = 1
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
 
-    p.add("-c", "--conf", required=False, is_config_file=True)
-    p.add("-n", "--latest", required=False, type=int, default=1)
-    p.add("-d", "--directory", required=True)
-    p.add("--save", required=False, action="store_true")
+    p.add("-c", required=False, is_config_file=True, metavar="file",
+          help="config file location, defaults to %s" % default_conf)
+    p.add("-n", required=False, type=int, default=default_n, metavar="count",
+          help="the latest N files to list, defaults to %d" % default_n)
+    p.add("-d", required=True, metavar="dir", help="the screenshot directory")
+    p.add("--save", required=False, action="store_true",
+          help="if specified, saves the current configuration to the config file")
 
     opts = vars(p.parse_args())
 
