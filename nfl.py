@@ -10,16 +10,16 @@ import configargparse
 import configparser
 
 
-class Screrror(Exception):
+class NLFError(Exception):
     def __init__(self, msg):
         self.msg = msg
 
 
-class ScreenshotDirError(Screrror):
+class DirectoryError(NLFError):
     pass
 
 
-class ConfigurationError(Screrror):
+class ConfigurationError(NLFError):
     pass
 
 
@@ -47,15 +47,15 @@ def debug(msg):
 
 def get_n_latest(directory, n):
     if not os.path.exists(directory):
-        raise ScreenshotDirError("Screenshot directory not found")
+        raise DirectoryError("Directory not found")
     if not os.path.isdir(directory):
-        raise ScreenshotDirError("Screenshot directory is not a directory")
+        raise DirectoryError("Given path is not a directory")
 
     files = [os.path.abspath(f) for f in glob.glob(
-        "%s/*" % directory) if os.path.isfile(f) and not os.path.islink(f)]
+        "%s/*" % directory) if os.path.isfile(f)]
 
     if len(files) == 0:
-        raise ScreenshotDirError("No screenshots found")
+        raise DirectoryError("No files found")
 
     files.sort(key=os.path.getmtime, reverse=True)
     return files[:n]
@@ -90,11 +90,11 @@ def handler_save_config(conf):
     debug("Wrote config to %s" % conf.config)
 
 
-def update_symlinks(sym_dir, format, screenshot_dir, n):
+def update_symlinks(sym_dir, format, source_dir, n):
     if n != 1 and not "{n}" in conf.symlink_format:
         raise ConfigurationError("Missing {n} in symlink format")
 
-    files = get_n_latest(screenshot_dir, n)
+    files = get_n_latest(source_dir, n)
 
     # TODO special format for the first
 
@@ -125,23 +125,23 @@ def parse_args():
             raise configargparse.ArgumentTypeError("Positive integer expected")
         return i
 
-    default_conf_raw = "$XDG_CONFIG_HOME/scranagement.conf"
+    default_conf_raw = "$XDG_CONFIG_HOME/nlatest-files.conf"
     default_conf = _expand_path(default_conf_raw)
     default_n = 1
-    default_format = "latest-screenshot-{n}"
-    prog = "scrs"
+    default_format = "latest-{n}"
+    prog = "nlf"
 
     p = configargparse.ArgParser(default_config_files=[default_conf], prog=prog,
                                  formatter_class=configargparse.RawDescriptionHelpFormatter,
                                  epilog="""
 EXAMPLES
-{prog} -d ~/Pictures -n 5
-    Prints the latest 5 screenshots in ~/Pictures
+{prog} -d ~/invoices -n 5
+    Prints the latest 5 files in ~/invoices
 
-{prog} -d ~/Pictures -n 5 --save
+{prog} -d ~/invoices -n 5 --save
     Saves the given parameters to the default config file
 
-{prog} -d ~/Pictures -n 5 -c ~/dotfiles/myconfig.conf --save
+{prog} -d ~/invoices -n 5 -c ~/dotfiles/myconfig.conf --save
     Saves the given parameters to the specified config file
 
 {prog}
@@ -161,14 +161,14 @@ scrot -e 'mv -u $f ~/screenshots/ && {prog} -u -d ~/screenshots -n 1 -f "latest"
     p.add("--save", action="store_true",
           help="if specified, saves the current configuration to the config file")
     p.add("-d", "--dir", required=True, metavar="DIR",
-          help="the screenshot directory")
+          help="the source directory")
     p.add("-n", "--count", type=positive_int, default=default_n, metavar="COUNT",
-          help="the latest n screenshots to list, defaults to %d" % default_n)
+          help="the latest n files to list, defaults to %d" % default_n)
 
     p.add("-u", "--update-symlinks", action="store_true", dest="update-symlinks",
-          help="create symlinks to the latest n screenshots")
+          help="create symlinks to the latest n files")
     p.add("-s", "--symlink-dir", metavar="DIR", dest="symlink-dir",
-          help="the directory to create symlinks in, defaults to the screenshot directory")
+          help="the directory to create symlinks in, defaults to the source directory")
     p.add("-f", "--symlink-format", default=default_format, metavar="FORMAT", dest="symlink-format",
           help="the format string for symlinks, where {n} is the order index, defaults to '%s'. {n} must be included, unless n = 1" % default_format)
     p.add("-q", "--quiet", action="store_true",
@@ -220,7 +220,7 @@ if __name__ == "__main__":
         conf = parse_args()
         ACTION_HANDLERS[conf.action.value](conf)
         exit = 0
-    except Screrror as e:
+    except NLFError as e:
         debug("%s: %s" % (e.__class__.__name__, e.msg))
         exit = 1
 
