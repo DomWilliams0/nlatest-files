@@ -52,7 +52,7 @@ def get_n_latest(directory, n):
         raise ScreenshotDirError("Screenshot directory is not a directory")
 
     files = [os.path.abspath(f) for f in glob.glob(
-        "%s/*" % directory) if os.path.isfile(f)]
+        "%s/*" % directory) if os.path.isfile(f) and not os.path.islink(f)]
 
     if len(files) == 0:
         raise ScreenshotDirError("No screenshots found")
