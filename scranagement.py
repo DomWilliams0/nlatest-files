@@ -44,16 +44,24 @@ def parse_args():
     default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
     # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
     default_n = 1
+    default_format = "screenshot-latest-%(n)"
+    # TODO accept date formatting too?
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
+    # TODO add examples in epilog using RawDescriptionHelpFormatter
 
-    p.add("-c", required=False, is_config_file=True, metavar="file",
-          help="config file location, defaults to %s" % default_conf)
-    p.add("-n", required=False, type=int, default=default_n, metavar="count",
-          help="the latest N files to list, defaults to %d" % default_n)
-    p.add("-d", required=True, metavar="dir", help="the screenshot directory")
-    p.add("--save", required=False, action="store_true",
+    p.add("-c", is_config_file=True, metavar="file",
+          help="config file location, defaults to %s" % default_conf)  # TODO dont expand default
+    p.add("--save", action="store_true",
           help="if specified, saves the current configuration to the config file")
+    p.add("-d", required=True, metavar="dir", help="the screenshot directory")
+    p.add("-n", type=int, default=default_n, metavar="count",
+          help="the latest n screenshots to list, defaults to %d" % default_n)
+
+    p.add("symlinks", nargs="?", help="create symlinks to the latest n screenshots")
+    p.add("-s", metavar="dir", help="the directory to create symlinks in")
+    p.add("-f", default=default_format, metavar="format",
+          help="the format string for symlinks, where %%(n) is the order index")
 
     opts = vars(p.parse_args())
 
@@ -63,6 +71,7 @@ def parse_args():
     # save to config file
     if opts.pop("save"):
         cp = configparser.ConfigParser()
+        # TODO split into general and symlink settings
         cp.read_dict({"settings": opts})
         with open(default_conf, "w") as f:
             cp.write(f)
