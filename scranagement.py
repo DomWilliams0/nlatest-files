@@ -2,6 +2,7 @@
 
 import os
 import glob
+import sys
 from collections import namedtuple
 
 Config = namedtuple('Config', ['directory', 'latest_n'])
@@ -15,8 +16,17 @@ def get_n_latest(directory, n):
 
 
 def main(conf):
-    x = get_n_latest(conf.directory, conf.latest_n)
-    print(x)
+    files = get_n_latest(conf.directory, conf.latest_n)
+
+    # none found
+    if not files:
+        return False
+
+    for f in files:
+        print(os.path.abspath(f))
+
+    # TODO err codes
+    return True
 
 
 def _expand_path(path):
@@ -40,4 +50,6 @@ if __name__ == "__main__":
         show_usage()
         sys.exit(1)
 
-    main(conf)
+    res = main(conf)
+    exit = 0 if res else 2
+    sys.exit(exit)
