@@ -16,16 +16,19 @@ class Action(Enum):
     GET = 2
 
 
+QUIET = False
+
+
 Config = namedtuple(
-    "Config", ["config", "dir", "count", "action", "symlink_dir", "symlink_format", "quiet"])
+    "Config", ["config", "dir", "count", "action", "symlink_dir", "symlink_format"])
 
 
 def _expand_path(path):
     return os.path.expanduser(os.path.expandvars(path))
 
 
-def debug(conf, msg):
-    if not conf.quiet:
+def debug(msg):
+    if not QUIET:
         print(msg, file=sys.stderr)
 
 
@@ -71,7 +74,7 @@ def handler_save_config(conf):
     with open(conf.config, "w") as f:
         cp.write(f)
 
-    debug(conf, "Wrote config to %s" % conf.config)
+    debug("Wrote config to %s" % conf.config)
     return True
 
 
@@ -87,11 +90,11 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
         if os.path.islink:
             os.remove(sym)
             count += 1
-    debug(conf, "Removed %d existing symlink(s)" % count)
+    debug("Removed %d existing symlink(s)" % count)
 
     for (i, scr) in enumerate(files):
         sym = os.path.join(sym_dir, format.format(n=i + 1))
-        debug(conf, "Creating symlink %s -> %s" % (os.path.basename(scr), sym))
+        debug("Creating symlink %s -> %s" % (os.path.basename(scr), sym))
         os.symlink(scr, sym)
 
     return True
@@ -143,6 +146,10 @@ def parse_args():
     if not opts["config"]:
         opts["config"] = default_conf
 
+    # set global
+    global QUIET
+    QUIET = opts["quiet"]
+
     # determine action
     actions = [opts["save"], opts["update-symlinks"]]
     action_sum = sum(actions)
@@ -163,8 +170,7 @@ def parse_args():
         count=opts["count"],
         action=action,
         symlink_dir=opts["symlink-dir"],
-        symlink_format=opts["symlink-format"],
-        quiet=opts["quiet"]
+        symlink_format=opts["symlink-format"]
     )
 
 
