@@ -215,7 +215,7 @@ ACTION_HANDLERS = [
     handler_get_n_latest
 ]
 
-if __name__ == "__main__":
+def main():
     try:
         conf = parse_args()
         ACTION_HANDLERS[conf.action.value](conf)
@@ -225,3 +225,6 @@ if __name__ == "__main__":
         exit = 1
 
     sys.exit(exit)
+
+if __name__ == "__main__":
+    main()
