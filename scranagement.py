@@ -150,6 +150,10 @@ EXAMPLES
 {prog} -u -s $HOME/screenshots -f "screeny-{{n}}" -n 3
     Creates symlinks to the top 3 latest screenshots in ~/screenshots
 
+scrot -e 'mv -u $f ~/screenshots/ && {prog} -u -d ~/screenshots -n 1 -f "latest"'
+    Takes a screenshot with scrot, moves it to ~/screenshots, then
+    adds a `symlink ~/screenshots/latest` pointing to it
+
             """.format(prog=prog))
 
     p.add("-c", "--config", is_config_file=True, metavar="FILE",
