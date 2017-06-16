@@ -1,7 +1,7 @@
 nlatest-files
 =======================
 
-Easy access to the n latest files in a directory.
+Easy symlinks to the n latest files in a directory.
 
 This is an tool that maintains symlinks to the n most recently modified
 files in a given directory.
