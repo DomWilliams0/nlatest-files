@@ -18,15 +18,16 @@ class Action(Enum):
 
 
 Config = namedtuple(
-    "Config", ["config", "dir", "count", "action", "symlink_dir", "symlink_format"])
+    "Config", ["config", "dir", "count", "action", "symlink_dir", "symlink_format", "quiet"])
 
 
 def _expand_path(path):
     return os.path.expanduser(os.path.expandvars(path))
 
 
-def debug(msg):
-    print(msg, file=sys.stderr)
+def debug(conf, msg):
+    if not conf.quiet:
+        print(msg, file=sys.stderr)
 
 
 def get_n_latest(directory, n):
@@ -71,7 +72,7 @@ def handler_save_config(conf):
     with open(conf.config, "w") as f:
         cp.write(f)
 
-    debug("Wrote config to %s" % conf.config)
+    debug(conf, "Wrote config to %s" % conf.config)
     return True
 
 
@@ -79,10 +80,11 @@ def update_symlinks(sym_dir, format, screenshot_dir, n):
     files = get_n_latest(screenshot_dir, n)  # TODO check if empty
 
     # TODO special format for the first
+    # TODO delete all matching glob
 
     for (i, scr) in enumerate(files):
         sym = os.path.join(sym_dir, format.format(n=i + 1))
-        debug("Creating symlink %s -> %s" % (os.path.basename(scr), sym))
+        debug(conf, "Creating symlink %s -> %s" % (os.path.basename(scr), sym))
         with contextlib.suppress(FileNotFoundError):
             os.remove(sym)
         os.symlink(scr, sym)
@@ -119,6 +121,8 @@ def parse_args():
           help="the directory to create symlinks in, defaults to the screenshot directory")
     p.add("-f", "--symlink-format", default=default_format, metavar="FORMAT", dest="symlink-format",
           help="the format string for symlinks, where {n} is the order index, defaults to '%s'" % default_format)
+    p.add("-q", "--quiet", action="store_true",
+          help="if specified, no status messages will be printed to stderr")
 
     opts = vars(p.parse_args())
 
@@ -148,7 +152,9 @@ def parse_args():
         count=opts["count"],
         action=action,
         symlink_dir=opts["symlink-dir"],
-        symlink_format=opts["symlink-format"])
+        symlink_format=opts["symlink-format"],
+        quiet=opts["quiet"]
+    )
 
 
 ACTION_HANDLERS = [
