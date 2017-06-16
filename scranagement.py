@@ -5,6 +5,7 @@ import glob
 import sys
 from collections import namedtuple
 from enum import Enum
+import contextlib
 
 import configargparse
 import configparser
@@ -30,7 +31,8 @@ def debug(msg):
 
 def get_n_latest(directory, n):
     # TODO check for missing directory
-    files = [os.path.abspath(f) for f in glob.glob("%s/*" % directory) if os.path.isfile(f)]
+    files = [os.path.abspath(f) for f in glob.glob(
+        "%s/*" % directory) if os.path.isfile(f)]
     files.sort(key=os.path.getmtime, reverse=True)
     return files[:n]
 
@@ -73,16 +75,30 @@ def handler_save_config(conf):
     return True
 
 
+def update_symlinks(sym_dir, format, screenshot_dir, n):
+    files = get_n_latest(screenshot_dir, n)  # TODO check if empty
+
+    # TODO special format for the first
+
+    for (i, scr) in enumerate(files):
+        sym = os.path.join(sym_dir, format.format(n=i + 1))
+        debug("Creating symlink %s -> %s" % (os.path.basename(scr), sym))
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(sym)
+        os.symlink(scr, sym)
+
+    return True
+
+
 def handler_update_symlinks(conf):
-    # TODO
-    debug("Updating symlinks")
+    return update_symlinks(conf.symlink_dir, conf.symlink_format, conf.dir, conf.count)
 
 
 def parse_args():
     default_conf = _expand_path("$XDG_CONFIG_HOME/scranagement.conf")
     # TODO choose $HOME if $XDG_CONFIG_HOME doesnt exist
     default_n = 1
-    default_format = "screenshot-latest-%%(n)"
+    default_format = "latest-screenshot-{n}"
     # TODO accept date formatting too?
 
     p = configargparse.ArgParser(default_config_files=[default_conf])
@@ -102,7 +118,7 @@ def parse_args():
     p.add("-s", "--symlink-dir", metavar="DIR", dest="symlink-dir",
           help="the directory to create symlinks in, defaults to the screenshot directory")
     p.add("-f", "--symlink-format", default=default_format, metavar="FORMAT", dest="symlink-format",
-          help="the format string for symlinks, where %%(n) is the order index")
+          help="the format string for symlinks, where {n} is the order index, defaults to '%s'" % default_format)
 
     opts = vars(p.parse_args())
 
