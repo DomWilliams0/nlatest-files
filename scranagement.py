@@ -4,11 +4,28 @@ import os
 import glob
 import sys
 from collections import namedtuple
+from enum import Enum
 
 import configargparse
 import configparser
 
-Config = namedtuple("Config", ["directory", "latest_n"])
+
+class Action(Enum):
+    SAVE_CONFIG = 0
+    SYMLINKS = 1
+    GET = 2
+
+
+Config = namedtuple(
+    "Config", ["config", "dir", "count", "action", "symlink_dir", "symlink_format"])
+
+
+def _expand_path(path):
+    return os.path.expanduser(os.path.expandvars(path))
+
+
+def debug(msg):
+    print(msg, file=sys.stderr)
 
 
 def get_n_latest(directory, n):
@@ -18,8 +35,8 @@ def get_n_latest(directory, n):
     return files[:n]
 
 
-def main(conf):
-    files = get_n_latest(conf.directory, conf.latest_n)
+def handler_get_n_latest(conf):
+    files = get_n_latest(conf.dir, conf.count)
 
     # none found
     if not files:
@@ -32,12 +49,33 @@ def main(conf):
     return True
 
 
-def _expand_path(path):
-    return os.path.expanduser(os.path.expandvars(path))
+def handler_save_config(conf):
+    cp = configparser.ConfigParser()
+
+    # split up settings
+    general_settings, symlink_settings = {}, {}
+    for (k, v) in conf._asdict().items():
+        if k.startswith("symlink_"):
+            section = symlink_settings
+        elif k in ["dir", "count"]:
+            section = general_settings
+        else:
+            continue
+
+        section[k.replace("_", "-")] = v
+
+    cp.read_dict({"general": general_settings,
+                  "symlinks": symlink_settings})
+    with open(conf.config, "w") as f:
+        cp.write(f)
+
+    debug("Wrote config to %s" % conf.config)
+    return True
 
 
-def debug(msg):
-    print(msg, file=sys.stderr)
+def handler_update_symlinks(conf):
+    # TODO
+    debug("Updating symlinks")
 
 
 def parse_args():
@@ -59,7 +97,7 @@ def parse_args():
     p.add("-n", "--count", type=int, default=default_n, metavar="COUNT",
           help="the latest n screenshots to list, defaults to %d" % default_n)
 
-    p.add("-u", "--update-symlinks", action="store_true",
+    p.add("-u", "--update-symlinks", action="store_true", dest="update-symlinks",
           help="create symlinks to the latest n screenshots")
     p.add("-s", "--symlink-dir", metavar="DIR", dest="symlink-dir",
           help="the directory to create symlinks in, defaults to the screenshot directory")
@@ -71,35 +109,41 @@ def parse_args():
     # set default
     if not opts["symlink-dir"]:
         opts["symlink-dir"] = opts["dir"]
+    if not opts["config"]:
+        opts["config"] = default_conf
 
-    # save to config file
-    if opts["save"]:
-        cp = configparser.ConfigParser()
+    # determine action
+    actions = [opts["save"], opts["update-symlinks"]]
+    action_sum = sum(actions)
+    if action_sum == 0:
+        # default
+        action = Action.GET
+    elif action_sum == 1:
+        # one was chosen
+        action = Action(actions.index(True))
+    else:
+        # uh oh
+        debug("Error: only one of --update-symlinks and --save can be specified")
+        sys.exit(1)  # TODO return error code instead of exit
 
-        # splt up settings
-        general_settings, symlink_settings = {}, {}
-        for (k, v) in opts.items():
-            if k.startswith("symlink-"):
-                section = symlink_settings
-            elif k in ["dir", "count"]:
-                section = general_settings
-            else:
-                continue
+    return Config(
+        config=opts["config"],
+        dir=_expand_path(opts["dir"]),
+        count=opts["count"],
+        action=action,
+        symlink_dir=opts["symlink-dir"],
+        symlink_format=opts["symlink-format"])
 
-            section[k] = v
 
-        cp.read_dict({"general": general_settings,
-                      "symlinks": symlink_settings})
-        with open(default_conf, "w") as f:
-            cp.write(f)
-
-        debug("Wrote config to %s" % default_conf)
-        sys.exit(0)  # TODO return action with what to do
-
-    return Config(directory=_expand_path(opts["dir"]), latest_n=opts["count"])
-
+ACTION_HANDLERS = [
+    handler_save_config,
+    handler_update_symlinks,
+    handler_get_n_latest
+]
 
 if __name__ == "__main__":
-    res = main(parse_args())
+    conf = parse_args()
+    res = ACTION_HANDLERS[conf.action.value](conf)
+
     exit = 0 if res else 2
     sys.exit(exit)
