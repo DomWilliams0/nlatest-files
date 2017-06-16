@@ -30,7 +30,7 @@ def debug(msg):
 
 def get_n_latest(directory, n):
     # TODO check for missing directory
-    files = [f for f in glob.glob("%s/*" % directory) if os.path.isfile(f)]
+    files = [os.path.abspath(f) for f in glob.glob("%s/*" % directory) if os.path.isfile(f)]
     files.sort(key=os.path.getmtime, reverse=True)
     return files[:n]
 
@@ -43,7 +43,7 @@ def handler_get_n_latest(conf):
         return False
 
     for f in files:
-        print(os.path.abspath(f))
+        print(f)
 
     # TODO err codes
     return True
