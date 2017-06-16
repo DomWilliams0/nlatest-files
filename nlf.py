@@ -91,7 +91,7 @@ def handler_save_config(conf):
 
 
 def update_symlinks(sym_dir, format, source_dir, n):
-    if n != 1 and not "{n}" in conf.symlink_format:
+    if n != 1 and not "{n}" in format:
         raise ConfigurationError("Missing {n} in symlink format")
 
     files = get_n_latest(source_dir, n)
